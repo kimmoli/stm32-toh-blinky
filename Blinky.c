@@ -22,57 +22,49 @@ volatile uint32_t msTicks;                      /* counts 1ms timeTicks       */
 /*----------------------------------------------------------------------------
   SysTick_Handler
  *----------------------------------------------------------------------------*/
-void SysTick_Handler(void) {
-  msTicks++;
+void SysTick_Handler(void) 
+{
+   msTicks++;
 }
 
 /*----------------------------------------------------------------------------
   delays number of tick Systicks (happens every 1 ms)
  *----------------------------------------------------------------------------*/
-void Delay (uint32_t dlyTicks) {                                              
-  uint32_t curTicks;
+void Delay (uint32_t dlyTicks) 
+{
+   uint32_t curTicks;
 
-  curTicks = msTicks;
-  while ((msTicks - curTicks) < dlyTicks);
+   curTicks = msTicks;
+   while ((msTicks - curTicks) < dlyTicks);
 }
 
 
 /*----------------------------------------------------------------------------
   Main function
  *----------------------------------------------------------------------------*/
-int main (void) {
-  int32_t led_num = LED_Num();
-  int32_t num = -1; 
-  int32_t dir =  1;
-	uint32_t keys = 0;
+int main (void) 
+{
+   SystemCoreClockUpdate();                      /* Get Core Clock Frequency   */
+   if (SysTick_Config(SystemCoreClock / 1000))   /* SysTick 1 msec interrupts  */
+   {
+      while (1);                                  /* Capture error              */
+   }
 
-  SystemCoreClockUpdate();                      /* Get Core Clock Frequency   */
-  if (SysTick_Config(SystemCoreClock / 1000)) { /* SysTick 1 msec interrupts  */
-    while (1);                                  /* Capture error              */
-  }
+   LED_Initialize();
+   Keyboard_Initialize();
 
-  LED_Initialize();
-	Keyboard_Initialize();
+   while(1)                                     /* Loop forever               */
+   {
+      if (Keyboard_GetKey(RIGHTBUTTON)) 
+         LED_On(REDLED);  /* Right button -> red led  */
+      
+      if (Keyboard_GetKey(LEFTBUTTON))
+         LED_On(GREENLED);  /* Left button -> green led */
+      
+      Delay( 50); 
 
-  while(1)                                     /* Loop forever               */
-	{
-			keys = Keyboard_GetKeys();
-		
-			if ( keys > 0)
-			{
-				if (keys & 1) LED_On(0);
-				if (keys & 2) LED_On(1);
-			}
-			else
-			{
-				num += dir;
-				if (num == led_num) { dir = -1; num =  led_num-1; } 
-				else if   (num < 0) { dir =  1; num =  0;         }
-
-				LED_On (num);
-				Delay( 50);                               /* Delay 50ms                 */
-				LED_Off(num);
-				Delay(200);                               /* Delay 200ms                */
-			}
+      LED_Off(0);
+      LED_Off(1);
+      Delay(200); 
   }
 }

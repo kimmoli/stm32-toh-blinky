@@ -16,8 +16,8 @@
 #include "GPIO_STM32F4xx.h"
 
 const GPIO_PIN_ID Pin_Key[] = {
-  { GPIOB, 14 },
-  { GPIOC,  3 }
+  { GPIOC, 03 },  /* Button right       */
+  { GPIOB, 14 }		/* Button left (derp) */
 };
 
 #define NUM_KEYS (sizeof(Pin_Key)/sizeof(GPIO_PIN_ID))
@@ -77,6 +77,14 @@ uint32_t Keyboard_GetKeys (void) {
 		}
 	}
   return (val);
+}
+
+/*
+ * Get status of one key
+ */
+int Keyboard_GetKey(uint32_t num)
+{
+	return (GPIO_PinRead(Pin_Key[num].port, Pin_Key[num].num) != 0);
 }
 
 

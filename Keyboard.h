@@ -17,9 +17,13 @@
 
 #include <stdint.h>
 
+#define RIGHTBUTTON 0
+#define LEFTBUTTON 1
+
 extern void     Keyboard_Initialize   (void);
 extern void     Keyboard_Uninitialize (void);
 extern uint32_t Keyboard_GetKeys      (void);
 extern uint32_t Keyboard_NumKeys      (void);
+extern int 		  Keyboard_GetKey				(uint32_t num);
 
 #endif /* __KEYBOARD_H */

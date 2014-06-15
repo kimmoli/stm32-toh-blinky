@@ -17,6 +17,9 @@
 
 #include <stdint.h>
 
+#define REDLED 0
+#define GREENLED 1
+
 extern void     LED_Initialize   (void);
 extern void     LED_Uninitialize (void);
 extern void     LED_On           (uint32_t num);

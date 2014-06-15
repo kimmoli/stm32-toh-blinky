@@ -17,8 +17,8 @@
 
 
 const GPIO_PIN_ID Pin_LED[] = {
-  { GPIOB, 12 },
-  { GPIOB, 13 }
+  { GPIOB, 12 },	/* red led (ERR)  */
+  { GPIOB, 13 }   /* green led (ST) */
 };
 
 #define NUM_LEDS (sizeof(Pin_LED)/sizeof(GPIO_PIN_ID))
