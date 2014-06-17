@@ -15,5 +15,5 @@ extern void I2C_Initialize(char myadd)
    GPIOB->AFR[0] |= ((4<<28) | (4<<24));
    I2C1->CR2 = 0x28; /* 40 MHz */
    I2C1->OAR1 = 0x4000 | (myadd<<1);  /* Slave address */
-   I2C1->CR1 = 0x0401; /* Ack, Disable clock stretch, enable peripheral */
+   I2C1->CR1 = 0x0401; /* Ack, Enable clock stretch, enable peripheral */
 }
