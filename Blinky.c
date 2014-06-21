@@ -18,6 +18,10 @@
 #include "keyboard.h"
 #include "i2c.h"
 
+#include "registers.h"
+
+volatile int registersChanged;
+volatile uint8_t registers[NUMBER_OF_REGISTERS];
 
 volatile uint32_t msTicks;                      /* counts 1ms timeTicks       */
 
@@ -46,18 +50,8 @@ void Delay (uint32_t dlyTicks)
  *----------------------------------------------------------------------------*/
 int main (void) 
 {
-   int dummy = 0;
-//   uint32_t curTicks;
-   int go = 0;
-   int writeCount = 0;
-   int readCount = 0;
-   
-   int dataPointer = 0;
-   
-   int i2c1sr1;
-   
-   unsigned char controlRegister = 0x00;
-   unsigned char statusRegister = 0x00;
+   uint32_t currentTicks = 0;
+   int a = 0;
    
    SystemCoreClockUpdate();                      /* Get Core Clock Frequency   */
    if (SysTick_Config(SystemCoreClock / 1000))   /* SysTick 1 msec interrupts  */
@@ -74,55 +68,53 @@ int main (void)
    
    while(1)                                     /* Loop forever               */
    {
-      i2c1sr1 = I2C1->SR1;
-      if ((i2c1sr1 & 0x2) == 0x2) /* ADDR */
-      {
-         dummy |= I2C1->SR1;
-         dummy |= I2C1->SR2; /* this clears ADDR */
-         go = 1; /* This was for us */
-         writeCount = 0;
-         readCount = 0;
-      }
-      else if (go && ((i2c1sr1 & 0x80) == 0x80)) /* TxE */
-      {
-         switch (dataPointer + readCount)
-         {
-            case 0x00 : I2C1->DR = (I2C1->DR & 0xFF00) | controlRegister;
-                        break;
-            case 0x01 : I2C1->DR = (I2C1->DR & 0xFF00) | statusRegister;
-                        break;
-            default : I2C1->DR = (I2C1->DR & 0xFF00) | 0xFF;
-                      break;
-         }
-         readCount++;  
-      }
-      else if (go && ((i2c1sr1 & 0x40) == 0x40)) /* RxNE */
-      {
-         switch (writeCount)
-         {
-            case 0x00 : dataPointer = I2C1->DR & 0xFF; /* First byte written is always dataPointer */
-                        break;
-            case 0x01 : if (dataPointer == 0x00)
-                           controlRegister = I2C1->DR & 0xFF;
-                        break;
-            default : dummy |= I2C1->DR; 
-                      break;
-         }
-         writeCount++;
-      }
-      else if ((i2c1sr1 & 0x0010)) /* STOPF */
-      {
-         dummy |= I2C1->SR1;
-         I2C1->CR1 = I2C1->CR1 & 0xFFFF;
-         go = 0;
-      }
-      else if ((i2c1sr1 & 0xDF00)) /* Anything to clear, then clear them */
-         I2C1->SR1 = 0;
       
-      /* For testing */
-      statusRegister = Keyboard_GetKeys();
-      if (controlRegister & 0x01) LED_On(REDLED); else LED_Off(REDLED);
-      if (controlRegister & 0x02) LED_On(GREENLED); else LED_Off(GREENLED);
-     
+      if (msTicks > (currentTicks+1000))
+      {
+         a++;
+         currentTicks = msTicks;
+         if (a&1) LED_On(GREENLED); else LED_Off(GREENLED);
+      }
+      
+      if (registersChanged)
+      {
+         registersChanged = 0;
+         if (registers[0] & 0x01) LED_On(REDLED); else LED_Off(REDLED);
+         if (registers[1] & 0x02) LED_On(GREENLED); else LED_Off(GREENLED);
+      }
   }
 }
+
+
+/* 
+   ***NOTES***
+
+   PC13 = INTOUT <<>> Interrupt out to Jolla
+   PA8 =  FLASH_CSL <<>> GPIO // SPI CSL for Flash
+   PB5 =  EINK_CSL <<>> GPIO Output // SPI CSL for EINK
+
+   EINK pins                                             einkCtrlRegister bit
+
+   PA15 = EINK_RESETL <<>> GPIO Output                   0
+   PB9 =  EINK_ON <<>> GPIO Output !! Must wirewrap      1
+   PC7 =  EINK_BORDER <<>> GPIO Output                   2
+   PC8 =  EINK_DISCHARGE <<>> GPIO Output                3
+
+   PC6 =  EINK_PWM <<>> Connect to TIM3_CH1 = AF2        einkPWMRegister
+
+   PB4 =  EINK_BUSY <<>> GPIO Input
+
+   PC10 = SPI_SCLK <<>> SPI3 = AF6
+   PC11 = SPI_MISO <<>> SPI3 = AF6
+   PC12 = SPI_MOSI <<>> SPI3 = AF6
+   
+
+epd_fuse.c:     GPIO_mode(panel_on_pin, GPIO_OUTPUT);
+epd_fuse.c:     GPIO_mode(border_pin, GPIO_OUTPUT);
+epd_fuse.c:     GPIO_mode(discharge_pin, GPIO_OUTPUT);
+epd_fuse.c:     GPIO_mode(pwm_pin, GPIO_PWM);
+epd_fuse.c:     GPIO_mode(reset_pin, GPIO_OUTPUT);
+epd_fuse.c:     GPIO_mode(busy_pin, GPIO_INPUT);
+
+
+*/
