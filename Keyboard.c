@@ -17,7 +17,7 @@
 
 const GPIO_PIN_ID Pin_Key[] = {
   { GPIOC, 03 },  /* Button right       */
-  { GPIOB, 14 }		/* Button left (derp) */
+  { GPIOB, 14 }	/* Button left (derp) */
 };
 
 #define NUM_KEYS (sizeof(Pin_Key)/sizeof(GPIO_PIN_ID))
@@ -44,16 +44,6 @@ void Keyboard_Initialize (void) {
                     GPIO_OUTPUT_SPEED_25MHz,
                     GPIO_NO_PULL_UP_DOWN);  
 	}	
-}
-
-
-/*-----------------------------------------------------------------------------
- *      Keyboard_Uninitialize:  Uninitialize keyboard/buttons
- *
- * Parameters: (none)
- * Return:     (none)
- *----------------------------------------------------------------------------*/
-void Keyboard_Uninitialize (void) {
 }
 
 
