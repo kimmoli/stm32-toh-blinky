@@ -47,13 +47,17 @@ void Delay (uint32_t dlyTicks)
 int main (void) 
 {
    int dummy = 0;
-   uint32_t curTicks;
+//   uint32_t curTicks;
    int go = 0;
+   int writeCount = 0;
+   int readCount = 0;
    
-   unsigned char testData = 0x00;
-   int m = 0;
-   //char testString[] = "ABCDEFGHIJKL";
+   int dataPointer = 0;
    
+   int i2c1sr1;
+   
+   unsigned char controlRegister = 0x00;
+   unsigned char statusRegister = 0x00;
    
    SystemCoreClockUpdate();                      /* Get Core Clock Frequency   */
    if (SysTick_Config(SystemCoreClock / 1000))   /* SysTick 1 msec interrupts  */
@@ -70,63 +74,55 @@ int main (void)
    
    while(1)                                     /* Loop forever               */
    {
-      if (msTicks - curTicks > 100)
+      i2c1sr1 = I2C1->SR1;
+      if ((i2c1sr1 & 0x2) == 0x2) /* ADDR */
       {
-         LED_Off(REDLED);
-         LED_Off(GREENLED);
-      }
-      
-      if ((I2C1->SR1 & 0x2) == 0x2) /* ADDR */
-      {
+         dummy |= I2C1->SR1;
          dummy |= I2C1->SR2; /* this clears ADDR */
-         I2C1->DR = (I2C1->DR & 0xFF00)| 0xAA;
-         LED_On(GREENLED );
-         curTicks = msTicks;
-         go = 1;
+         go = 1; /* This was for us */
+         writeCount = 0;
+         readCount = 0;
       }
-      if (go && ((I2C1->SR1 & 0x80) == 0x80)) /* TxE */
+      else if (go && ((i2c1sr1 & 0x80) == 0x80)) /* TxE */
       {
-         LED_On(REDLED);
-         
-         I2C1->SR1 = 0;
-         
-         if (m==0)
-            testData = 0xFF;
-         else if (m==2)
-            testData = I2C1->SR2 & 0xFF;
-         else if (m==1)
-            testData = (I2C1->SR2>>8) & 0xFF;
-         else 
-            testData = m;
-         
-         I2C1->DR = (I2C1->DR & 0xFF00) | testData;
-         m=(m+1)%10;
+         switch (dataPointer + readCount)
+         {
+            case 0x00 : I2C1->DR = (I2C1->DR & 0xFF00) | controlRegister;
+                        break;
+            case 0x01 : I2C1->DR = (I2C1->DR & 0xFF00) | statusRegister;
+                        break;
+            default : I2C1->DR = (I2C1->DR & 0xFF00) | 0xFF;
+                      break;
+         }
+         readCount++;  
       }
-      
-      if (go && ((I2C1->SR1 & 0x40) == 0x40)) /* RxNE */
+      else if (go && ((i2c1sr1 & 0x40) == 0x40)) /* RxNE */
       {
-         testData = 0xFF & I2C1->DR;
+         switch (writeCount)
+         {
+            case 0x00 : dataPointer = I2C1->DR & 0xFF; /* First byte written is always dataPointer */
+                        break;
+            case 0x01 : if (dataPointer == 0x00)
+                           controlRegister = I2C1->DR & 0xFF;
+                        break;
+            default : dummy |= I2C1->DR; 
+                      break;
+         }
+         writeCount++;
       }
-
-      if ((I2C1->SR1 & 0x410)) /* AF, STOPF */
+      else if ((i2c1sr1 & 0x0010)) /* STOPF */
       {
-         LED_Off(REDLED);
+         dummy |= I2C1->SR1;
+         I2C1->CR1 = I2C1->CR1 & 0xFFFF;
          go = 0;
-         I2C1->SR1 = 0;
       }
+      else if ((i2c1sr1 & 0xDF00)) /* Anything to clear, then clear them */
+         I2C1->SR1 = 0;
       
-
-      
-//      if (Keyboard_GetKey(RIGHTBUTTON)) 
-//         LED_On(REDLED);  /* Right button -> red led  */
-//      
-//      if (Keyboard_GetKey(LEFTBUTTON))
-//         LED_On(GREENLED);  /* Left button -> green led */
-//      
-//      Delay( 50); 
-
-//      LED_Off(REDLED);
-//      LED_Off(GREENLED);
-//      Delay(200); 
+      /* For testing */
+      statusRegister = Keyboard_GetKeys();
+      if (controlRegister & 0x01) LED_On(REDLED); else LED_Off(REDLED);
+      if (controlRegister & 0x02) LED_On(GREENLED); else LED_Off(GREENLED);
+     
   }
 }
