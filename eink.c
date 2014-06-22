@@ -97,7 +97,64 @@ void Eink_Initialize(void)
    EXTI->IMR |= EXTI_IMR_MR4;
    EXTI->RTSR |= EXTI_RTSR_TR4;
    EXTI->FTSR |= EXTI_FTSR_TR4;
+   
+   /* SPI */
+   
+/*   
+   PC10 = SPI_SCLK <<>> SPI3 = AF6
+   PC11 = SPI_MISO <<>> SPI3 = AF6
+   PC12 = SPI_MOSI <<>> SPI3 = AF6
+   
+   PA8 =  FLASH_CSL <<>> GPIO // SPI CSL for Flash
+   PB5 =  EINK_CSL <<>> GPIO Output // SPI CSL for EINK
+*/
 
+   /*   GPIOA, GPIOB, GPIOC clocks enable (fur sure these are already enabled, but for reusability sake...) */
+   RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
+   RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;
+   RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN;
+   /* SPI3 Clock enable */
+   RCC->APB1ENR |= RCC_APB1ENR_SPI3EN;
+   
+   /* PA8 Output*/
+   GPIOA->MODER |= (GPIO_MODER_MODER8_0);
+   GPIOA->OTYPER &= ~GPIO_OTYPER_ODR_8;
+   GPIOA->OSPEEDR |= GPIO_OSPEEDER_OSPEEDR8;
+   GPIOA->ODR |= (1<<8); /* Set initially high*/
+
+   /* PB5 Output*/
+   GPIOB->MODER |= (GPIO_MODER_MODER5_0);
+   GPIOB->OTYPER &= ~GPIO_OTYPER_ODR_5;
+   GPIOB->OSPEEDR |= GPIO_OSPEEDER_OSPEEDR5;
+   GPIOB->ODR |= (1<<5); /* Set initially high*/
+
+   /* PC10,11,12 SPI3 AF6 */
+   GPIOC->MODER |= (GPIO_MODER_MODER10_1 | GPIO_MODER_MODER11_1) | GPIO_MODER_MODER12_1;
+   GPIOC->OTYPER &= ~(GPIO_OTYPER_ODR_10 | GPIO_OTYPER_ODR_11 | GPIO_OTYPER_ODR_12);
+   GPIOC->OSPEEDR |= GPIO_OSPEEDER_OSPEEDR10 | GPIO_OSPEEDER_OSPEEDR11 | GPIO_OSPEEDER_OSPEEDR12;
+   GPIOC->AFR[1] |= (6<<8) | (6<<12) | (6<<16);
+   
+   SPI3->CR1 = 0;  
+   SPI3->CR2 = 0;  
+
+   /*
+     bitrate = pclk/16 (011)    pclk/4 (001)
+     cpol=0 - low when idle
+     cpha=0 - sample on rising
+     mastermode=1
+     DFF=0 - 8bit mode
+     LSBFIRST=0 - MSB First
+
+     SSOE=1 use NSS pin
+   */
+
+    SPI3->CR1 |= SPI_CR1_BR_1 | SPI_CR1_BR_0 | SPI_CR1_MSTR | SPI_CR1_SSM | SPI_CR1_SSI;  // 1.0 MHz SPI
+    /*SPI3->CR1 |= SPI_CR1_BR_0 | SPI_CR1_MSTR | SPI_CR1_SSM | SPI_CR1_SSI;  */           // ??  MHz SPI
+    /*SPI3->CR1 |= SPI_CR1_MSTR | SPI_CR1_SSM | SPI_CR1_SSI;      */                      // ?? MHz SPI
+    
+    /*SPI3->CR2 |= SPI_CR2_SSOE;*/
+    
+    SPI3->CR1 |= SPI_CR1_SPE; // enable SPI1
 }
 
 void EXTI4_IRQHandler(void)
@@ -141,3 +198,36 @@ void Eink_SetOutputs(uint32_t val)
       
 }
 
+/* SPI Functions */
+
+void Eink_SPIChipSelect(uint8_t which, uint8_t state)
+{
+   /*
+   PA8 =  FLASH_CSL <<>> GPIO // SPI CSL for Flash
+   PB5 =  EINK_CSL <<>> GPIO Output // SPI CSL for EINK
+   */
+   
+   if (which == EINK_CS)
+      GPIO_PinWrite(GPIOB, EINK_CS, state);
+   else if (which == FLASH_CS)
+      GPIO_PinWrite(GPIOA, FLASH_CS, state);
+   
+}
+
+void Eink_SPITransmit(uint8_t first, uint8_t data)
+{
+   uint32_t dummy = 0;
+   
+   if (first)
+      Eink_SPIChipSelect(EINK_CS, 0);
+
+   while ((SPI3->SR & SPI_SR_TXE) != SPI_SR_TXE); 
+   SPI3->DR = (0xff & data);
+   while ((SPI3->SR & SPI_SR_RXNE) != SPI_SR_RXNE); 
+   dummy += SPI3->DR;
+}
+
+void Eink_SPIStop(void)
+{
+   Eink_SPIChipSelect(EINK_CS, 1);
+}

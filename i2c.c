@@ -1,6 +1,6 @@
 #include "i2c.h"
 #include "STM32F4xx.h"
-
+#include "eink.h"
 #include "registers.h"
 
 volatile uint16_t writeCount = 0;
@@ -66,6 +66,11 @@ void I2C1_EV_IRQHandler(void)
       {
          registers[(dataPointer + writeCount-1)] = I2C1->DR & 0xFF;
       }
+      else if (dataPointer == 0x10) /* SPI Bridge */
+      {
+         /* If first write to SPI bridge, start SPI transmission */
+         Eink_SPITransmit ((writeCount == 1) ? 1 : 0, I2C1->DR & 0xFF);
+      }
       else
       {
          dummy |= I2C1->DR; 
@@ -82,6 +87,9 @@ void I2C1_EV_IRQHandler(void)
       {
          registersChanged = 1;
       }
+      /* If wrote to SPI bridge, stop SPI transmission */
+      if (dataPointer == 0x10)
+         Eink_SPIStop();
    }
    
 
