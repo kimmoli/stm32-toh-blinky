@@ -16,10 +16,11 @@
 
 const GPIO_PIN_ID Eink_Outputs[] = 
 {
-  { GPIOA, 15 }, /* EINK_RESETL */
-  { GPIOB, 9 },  /* EINK_ON */
-  { GPIOC, 7 },  /* EINK_BORDER */
-  { GPIOC, 8 }   /* EINK_DISCHARGE */
+  { GPIOA, 15 }, /* 0 - EINK_RESETL */
+  { GPIOB, 9 },  /* 1 - EINK_ON */
+  { GPIOC, 7 },  /* 2 - EINK_BORDER */
+  { GPIOC, 8 }   /* 3 - EINK_DISCHARGE */
+                 /* 4 - EINK_PWM */
 };
 
 #define NUM_OUTPUTS (sizeof(Eink_Outputs)/sizeof(GPIO_PIN_ID))
@@ -85,3 +86,38 @@ void Eink_Initialize(void)
    
    TIM3->CR1 |= TIM_CR1_CKD_1; /* clockdiv4 */
 }
+
+
+int Eink_GetInput(uint32_t num)
+{
+	return (GPIO_PinRead(Eink_Inputs[num].port, Eink_Inputs[num].num) != 0);
+}
+
+void Eink_SetOutputs(uint32_t val)
+{
+   uint32_t n;
+
+   for (n = 0; n < NUM_OUTPUTS; n++) 
+   {
+      if (val & (1<<n)) 
+      {
+         GPIO_PinWrite(Eink_Outputs[n].port, Eink_Outputs[n].num, 1);
+      }
+      else
+      {
+         GPIO_PinWrite(Eink_Outputs[n].port, Eink_Outputs[n].num, 0);
+      }
+   }
+   
+   /* last bit of outputs is the PWM output, enable/disable TIM3 accordingly */
+   if (val & (1<<NUM_OUTPUTS))
+   {
+      TIM3->CR1 |= TIM_CR1_CEN;
+   }
+   else
+   {
+      TIM3->CR1 &= ~TIM_CR1_CEN;
+   }
+      
+}
+
