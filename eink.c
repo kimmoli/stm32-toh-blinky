@@ -1,6 +1,7 @@
 #include "eink.h"
 #include "STM32F4xx.h"
 #include "GPIO_STM32F4xx.h"
+#include "registers.h"
 
 /*
    PC6 =  EINK_PWM <<>> Connect to TIM3_CH1 = AF2
@@ -63,7 +64,7 @@ void Eink_Initialize(void)
                     GPIO_MODE_INPUT,
                     GPIO_OUTPUT_PUSH_PULL,
                     GPIO_OUTPUT_SPEED_25MHz,
-                    GPIO_NO_PULL_UP_DOWN);  
+                    GPIO_PULL_DOWN);  
 	}   
    
 
@@ -84,13 +85,32 @@ void Eink_Initialize(void)
    TIM3->CCMR1 |= TIM_CCMR1_OC1M_2 | TIM_CCMR1_OC1M_1;
    TIM3->CCER |= TIM_CCER_CC1E;
    
-   TIM3->CR1 |= TIM_CR1_CKD_1; /* clockdiv4 */
+   TIM3->CR1 |= TIM_CR1_CKD_1; /* clockdiv4 */ /* PWM Is enabled over i2c register write */
+   
+   RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+   
+   SYSCFG->EXTICR[2] |= SYSCFG_EXTICR2_EXTI4_PC;
+   
+   NVIC_EnableIRQ(EXTI4_IRQn);
+   
+   /* Enable interrupts from both rising and falling edge of buttons */
+   EXTI->IMR |= EXTI_IMR_MR4;
+   EXTI->RTSR |= EXTI_RTSR_TR4;
+   EXTI->FTSR |= EXTI_FTSR_TR4;
+
 }
 
+void EXTI4_IRQHandler(void)
+{
+   if (EXTI->PR & EXTI_PR_PR3)
+   EXTI->PR |= EXTI_PR_PR3;
+   
+   registers[1] = (registers[1] & 0x7F) | (Eink_GetInput(0) << 7);
+}
 
 int Eink_GetInput(uint32_t num)
 {
-	return (GPIO_PinRead(Eink_Inputs[num].port, Eink_Inputs[num].num) != 0);
+	return (GPIO_PinRead(Eink_Inputs[num].port, Eink_Inputs[num].num) != 0) ? 1 : 0;
 }
 
 void Eink_SetOutputs(uint32_t val)
