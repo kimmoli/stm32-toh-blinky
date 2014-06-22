@@ -1,41 +1,22 @@
-/*----------------------------------------------------------------------------
- * Name:    Blinky.c
- * Purpose: LED Flasher
- *----------------------------------------------------------------------------
- * This file is part of the uVision/ARM development tools.
- * This software may only be used under the terms of a valid, current,
- * end user licence from KEIL for a compatible version of KEIL software
- * development tools. Nothing else gives you the right to use this software.
- *
- * This software is supplied "AS IS" without warranties of any kind.
- *
- * Copyright (c) 2004-2013 Keil - An ARM Company. All rights reserved.
- *----------------------------------------------------------------------------*/
-
 #include <stdio.h>
 #include "STM32F4xx.h"
 #include "led.h"
 #include "keyboard.h"
 #include "i2c.h"
+#include "eink.h"
 
 #include "registers.h"
 
 volatile int registersChanged;
 volatile uint8_t registers[NUMBER_OF_REGISTERS];
 
-volatile uint32_t msTicks;                      /* counts 1ms timeTicks       */
+volatile uint32_t msTicks;
 
-/*----------------------------------------------------------------------------
-  SysTick_Handler
- *----------------------------------------------------------------------------*/
 void SysTick_Handler(void) 
 {
    msTicks++;
 }
 
-/*----------------------------------------------------------------------------
-  delays number of tick Systicks (happens every 1 ms)
- *----------------------------------------------------------------------------*/
 void Delay (uint32_t dlyTicks) 
 {
    uint32_t curTicks;
@@ -61,6 +42,7 @@ int main (void)
 
    LED_Initialize();
    Keyboard_Initialize();
+   Eink_Initialize();
    I2C_Initialize(0x24);
    
    LED_Off(REDLED);
@@ -100,7 +82,7 @@ int main (void)
    PC7 =  EINK_BORDER <<>> GPIO Output                   2
    PC8 =  EINK_DISCHARGE <<>> GPIO Output                3
 
-   PC6 =  EINK_PWM <<>> Connect to TIM3_CH1 = AF2        einkPWMRegister
+   PC6 =  EINK_PWM <<>> Connect to TIM3_CH1 = AF2        4
 
    PB4 =  EINK_BUSY <<>> GPIO Input
 
