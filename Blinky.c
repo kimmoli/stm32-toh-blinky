@@ -61,8 +61,7 @@ int main (void)
       if (registersChanged)
       {
          registersChanged = 0;
-         if (registers[0] & 0x01) LED_On(REDLED); else LED_Off(REDLED);
-         if (registers[1] & 0x02) LED_On(GREENLED); else LED_Off(GREENLED);
+         if (registers[2] & 0x20) LED_On(REDLED); else LED_Off(REDLED);
          Eink_SetOutputs(registers[2]);
       }
   }
